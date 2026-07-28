@@ -27,10 +27,24 @@ dependencies = [
 
 
 [project.optional-dependencies]
-dev = ["pytest"]
+api = [
+    "fastapi>=0.116.0,<1",
+    "prometheus-client>=0.22.0,<1",
+    "pydantic-settings>=2.10.0,<3",
+    "python-multipart>=0.0.20,<1",
+    "uvicorn[standard]>=0.35.0,<1",
+]
+dev = [
+    "httpx>=0.28.0,<1",
+    "pytest>=8.4.0,<9",
+    "pytest-asyncio>=1.1.0,<2",
+    "ruff>=0.12.0,<1",
+]
 
 [project.scripts]
 whisperx = "whisperx.__main__:cli"
+whisperx-api = "whisperx_api.server:run"
+whisperx-api-worker = "whisperx_api.jobs.worker:run"
 
 [build-system]
 requires = ["setuptools"]
@@ -40,7 +54,18 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["whisperx*"]
+include = ["whisperx*", "whisperx_api*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 # torchcodec (transitive dep of pyannote-audio >=4) has no wheels for Linux aarch64
 [tool.uv]

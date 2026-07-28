@@ -1,0 +1,23 @@
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ffmpeg python3.12 python3.12-venv ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:/app/.venv/bin:$PATH"
+
+WORKDIR /app
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY whisperx ./whisperx
+COPY whisperx_api ./whisperx_api
+
+RUN uv sync --frozen --no-dev --extra api
+
+EXPOSE 8000
+CMD ["whisperx-api"]

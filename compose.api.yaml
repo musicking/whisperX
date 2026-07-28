@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["whisperx-api"]
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - whisperx-data:/app/data
+      - whisperx-models:/root/.cache
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["whisperx-api-worker"]
+    env_file: .env
+    volumes:
+      - whisperx-data:/app/data
+      - whisperx-models:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  whisperx-data:
+  whisperx-models:
