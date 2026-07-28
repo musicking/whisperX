@@ -1,8 +1,8 @@
-from enum import StrEnum
 from typing import Any
 
 from pydantic import Field, model_validator
 
+from whisperx_api.enums import StrEnum
 from whisperx_api.models import APIModel
 
 

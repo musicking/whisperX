@@ -1,9 +1,9 @@
 from datetime import datetime
-from enum import StrEnum
 
 from pydantic import Field
 
 from whisperx_api.audio.schemas import PipelineOptions, ResponseFormat, TranscriptionResult
+from whisperx_api.enums import StrEnum
 from whisperx_api.models import APIModel
 
 
