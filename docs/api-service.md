@@ -6,6 +6,8 @@ The existing Python and CLI interfaces remain available without installing the A
 
 ## Install and run
 
+For Linux GPU deployment with Docker Compose, see [Docker deployment](docker-deployment.md).
+
 Install FFmpeg and make it available on PATH. For GPU execution, prepare the NVIDIA
 driver and CUDA/cuDNN environment required by this repository (CUDA 12.8).
 

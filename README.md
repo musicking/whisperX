@@ -2,6 +2,7 @@
 
 > **Integrated FastAPI:** this branch includes a single-process HTTP API in `whisperx/api`.
 > See [docs/api-service.md](docs/api-service.md) for setup and endpoints.
+> Linux GPU deployment: [Docker Compose guide](docs/docker-deployment.md).
 
 ## Recall.ai - Meeting Transcription API
 

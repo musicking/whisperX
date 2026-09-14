@@ -1,0 +1,15 @@
+.git
+.venv
+.env
+.env.*
+data
+whisperx_api
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+tests
+docs
+*.tar
+*.tar.gz
+*.zip

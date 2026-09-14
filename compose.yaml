@@ -1,0 +1,38 @@
+services:
+  api:
+    build: .
+    image: whisperx-api:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Container paths override host-specific paths from .env.
+      WHISPERX_API_HOST: 0.0.0.0
+      WHISPERX_API_PORT: "7865"
+      WHISPERX_API_DEVICE: cuda
+      # Only one host GPU is exposed, so its container index is always zero.
+      WHISPERX_API_DEVICE_INDEX: "0"
+      WHISPERX_API_DATA_DIR: /data
+      WHISPERX_API_LOG_FILE: /data/logs/api.log
+      WHISPERX_API_MODEL_DIR: /data/models/hf-hub
+      HF_HUB_CACHE: /data/models/hf-hub
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
+    ports:
+      - "${WHISPERX_API_PORT:-7865}:7865"
+    volumes:
+      # Model downloads and logs survive container recreation.
+      - ./data:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${WHISPERX_DOCKER_GPU_ID:-0}"]
+              capabilities: [gpu]
+    healthcheck:
+      # Readiness checks app initialization, not model availability.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7865/health/ready', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    stop_grace_period: 2m
