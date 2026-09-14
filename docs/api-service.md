@@ -107,6 +107,14 @@ Uses upstream `get_writer()` with aligned ASR text. Default format: SRT.
 Options: `model`, `language`, `prompt`, `hotwords`, `temperature`, `batch_size`,
 `chunk_size`, `response_format`, `max_line_width`, `max_line_count`, `highlight_words`.
 `max_line_count` requires `max_line_width`.
+
+SRT/VTT subtitles with word timestamps are split at clause punctuation first,
+following the approach used by [VoiceBridge](https://github.com/YanTianlong-01/comfyui_voicebridge/blob/main/src/comfyui_voicebridge/nodes.py).
+Punctuation, closing quotes, decimal numbers and timestamps are retained.
+Chinese `max_line_width` is a soft limit: a clause without a safe punctuation
+boundary may exceed it rather than split a word. Each clause is kept in its own
+cue; English clauses may wrap at word boundaries. JSON and TSV keep the original
+transcription segments. With `align=false`, subtitles retain segment boundaries.
 Optional `document_text` supplies the original narration script. ASR segments locate
 the script in the audio; WhisperX aligns the original text, preserving its wording
 and punctuation. No new task queue or model is required. Without `document_text`,

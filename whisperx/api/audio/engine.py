@@ -308,7 +308,8 @@ class WhisperXEngine:
             ]
         language = str(raw.get("language", "unknown"))
         # Sentence slices returned by alignment do not retain their boundary whitespace.
-        separator = "" if language in LANGUAGES_WITHOUT_SPACES else " "
+        output_language = "en" if task == AudioTask.TRANSLATE else language
+        separator = "" if output_language in LANGUAGES_WITHOUT_SPACES else " "
         text = separator.join(segment.text.strip() for segment in segments if segment.text.strip())
         return TranscriptionResult(
             task=task,

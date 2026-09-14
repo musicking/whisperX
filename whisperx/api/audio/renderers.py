@@ -1,7 +1,8 @@
 import io
 import json
 
-from whisperx.api.audio.schemas import ResponseFormat, TranscriptionResult
+from whisperx.api.audio.schemas import AudioTask, ResponseFormat, TranscriptionResult
+from whisperx.api.audio.subtitles import split_subtitles
 
 
 def render_result(
@@ -12,12 +13,24 @@ def render_result(
     max_line_count: int | None = None,
     highlight_words: bool = False,
 ) -> tuple[bytes, str]:
+    if response_format in {ResponseFormat.SRT, ResponseFormat.VTT}:
+        result = split_subtitles(result)
+        # Preserve natural clause boundaries. Chinese character limits are soft:
+        # without a word tokenizer, wrapping a long clause could split a word.
+        from whisperx.utils import LANGUAGES_WITHOUT_SPACES
+
+        if result.language in LANGUAGES_WITHOUT_SPACES and result.task != AudioTask.TRANSLATE:
+            max_line_width = None
+        max_line_count = None
     payload = result.model_dump(mode="json", exclude_none=True)
     if response_format in {ResponseFormat.JSON, ResponseFormat.VERBOSE_JSON}:
         if response_format == ResponseFormat.JSON:
             payload = {"text": result.text}
         return json.dumps(payload, ensure_ascii=False).encode(), "application/json"
-    # Reuse the upstream writers, including their subtitle layout and speaker labels.
+    if result.task == AudioTask.TRANSLATE:
+        # The API language describes the source audio; writers need the output language.
+        payload["language"] = "en"
+    # Reuse upstream timestamp formatting, word highlighting and speaker labels.
     from whisperx.utils import get_writer
 
     extension = "txt" if response_format == ResponseFormat.TEXT else response_format.value
