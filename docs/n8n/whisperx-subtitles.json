@@ -100,8 +100,8 @@
             "response": {
               "fullResponse": true,
               "neverError": true,
-              "responseFormat": "file",
-              "outputPropertyName": "subtitles"
+              "responseFormat": "text",
+              "outputPropertyName": "srtContent"
             }
           }
         }
@@ -114,7 +114,7 @@
         600,
         -150
       ],
-      "notes": "有原稿：在原生表单字段中增加 document_text。音频仍从 Binary.file 读取。"
+      "notes": "有原稿：在原生表单字段中增加 document_text。音频仍从 Binary.file 读取。 API 响应按普通文本读取到 srtContent，不生成二进制字幕文件。"
     },
     {
       "parameters": {
@@ -157,8 +157,8 @@
             "response": {
               "fullResponse": true,
               "neverError": true,
-              "responseFormat": "file",
-              "outputPropertyName": "subtitles"
+              "responseFormat": "text",
+              "outputPropertyName": "srtContent"
             }
           }
         }
@@ -171,38 +171,33 @@
         600,
         150
       ],
-      "notes": "无原稿：使用原生表单字段发送 file 音频及字幕选项。保留完整响应和 API 状态码。"
+      "notes": "无原稿：使用原生表单字段发送 file 音频及字幕选项。保留完整响应和 API 状态码。 API 响应按普通文本读取到 srtContent，不生成二进制字幕文件。"
     },
     {
       "parameters": {
-        "respondWith": "binary",
-        "responseDataSource": "set",
-        "inputFieldName": "subtitles",
+        "respondWith": "json",
+        "responseBody": "={{ Number($json.statusCode) >= 400 ? { success: false, error: $json.srtContent } : { success: true, srtContent: $json.srtContent } }}",
         "options": {
           "responseCode": "={{ Number($json.statusCode) }}",
           "responseHeaders": {
             "entries": [
               {
                 "name": "Content-Type",
-                "value": "={{ $json.headers['content-type'] }}"
-              },
-              {
-                "name": "Content-Disposition",
-                "value": "={{ $json.statusCode >= 400 ? 'inline; filename=error.json' : 'attachment; filename=subtitles.srt' }}"
+                "value": "application/json; charset=utf-8"
               }
             ]
           }
         }
       },
       "id": "24b56ad6-87e4-4e59-a2c2-d54e4e89a3be",
-      "name": "Return SRT",
+      "name": "Respond SRT JSON",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
         900,
         0
       ],
-      "notes": "成功时返回可下载的 subtitles.srt；API 返回 422/503 等状态时原样转发状态和 JSON 错误内容。"
+      "notes": "与 ComfyUI 附件一致，成功返回 {success:true,srtContent:完整SRT文本}，失败返回 {success:false,error:API错误文本}。保留 API 状态码，无文件下载响应。"
     }
   ],
   "connections": {
@@ -239,7 +234,7 @@
       "main": [
         [
           {
-            "node": "Return SRT",
+            "node": "Respond SRT JSON",
             "type": "main",
             "index": 0
           }
@@ -250,7 +245,7 @@
       "main": [
         [
           {
-            "node": "Return SRT",
+            "node": "Respond SRT JSON",
             "type": "main",
             "index": 0
           }

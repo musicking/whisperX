@@ -2,7 +2,7 @@
 
 导入文件：[whisperx-subtitles.json](whisperx-subtitles.json)。仅使用 n8n 内置节点，无需安装插件或配置凭据。
 
-流程：`Audio Webhook → Has Document → 自动字幕或原稿字幕 → Return SRT`。
+流程：`Audio Webhook → Has Document → 自动字幕或原稿字幕 → Respond SRT JSON`。
 两个 HTTP Request 节点均采用原生逐项 Form-Data 字段，不对整组表单字段使用表达式。
 
 ## 导入和运行
@@ -10,7 +10,7 @@
 1. 在 n8n 新建工作流，菜单选择 **Import from File**，导入 JSON。
 2. 打开 **Generate Subtitles** 和 **Generate Document Subtitles**，确认 API 地址为 `http://192.168.1.33:7865/v1/audio/subtitles`。地址必须能从 n8n 容器或服务器访问。
 3. 打开 **Audio Webhook**，点击 **Listen for test event**，复制节点显示的 **Test URL**。
-4. 使用下方命令发送音频；响应即 SRT 文件。
+4. 使用下方命令发送音频；响应为 JSON，`srtContent` 为完整字幕文本。
 5. 替换旧工作流时先取消发布旧版本，再发布新版，避免相同 Webhook 路径冲突。生产地址为 `https://n8n.singlion.cn/webhook/whisperx/subtitles`。
 
 Webhook 的 **Binary Data** 和 **Raw Body** 保持关闭，使用默认 multipart 解析。一次提交一个文件，字段名为 `file`。
@@ -25,7 +25,7 @@ Windows PowerShell：
 curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
   -F "file=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
   -F "language=zh" `
-  -o subtitles.srt
+  -o result.json
 ```
 
 根据原稿生成字幕（将 TXT 内容作为 `document_text` 文本字段发送，不上传 document 文件）：
@@ -35,7 +35,7 @@ curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
   -F "file=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
   -F "document_text=<D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.txt" `
   -F "language=zh" `
-  -o subtitles.srt
+  -o result.json
 ```
 
 Linux：
@@ -45,7 +45,7 @@ curl 'https://n8n.singlion.cn/webhook-test/whisperx/subtitles' \
   -F 'file=@/path/to/narration.mp3' \
   -F 'document_text=</path/to/document.txt' \
   -F 'language=zh' \
-  -o subtitles.srt
+  -o result.json
 ```
 
 不使用原稿时，删除 `document_text` 那一行即可。原稿文件使用 UTF-8，内容应与音频一致。
@@ -58,8 +58,15 @@ curl 'https://n8n.singlion.cn/webhook-test/whisperx/subtitles' \
 | `language` | 可选，默认 `zh` |
 | `document_text` | 可选，原稿文字；未填写或空白时不传给 API |
 
-成功：HTTP 200，下载 `subtitles.srt`。在 n8n 执行结果中也可查看 **Generate Subtitles → Binary → subtitles**。
-API 错误：原样返回 API 状态码及 JSON 错误；不要将错误响应当作字幕。
+成功：HTTP 200，普通 JSON 响应，与附件 ComfyUI 工作流的字段保持一致：
+
+```json
+{"success":true,"srtContent":"1\n00:00:00,031 --> 00:00:00,552\n大家好\n\n"}
+```
+
+HTTP Request 使用 Text 响应格式，字幕位于 JSON 的 `srtContent` 字段，不生成二进制字幕文件。
+API 错误：保留 API 状态码，返回 `{"success":false,"error":"API 错误响应文本"}`。
+WhisperX 没有任务 ID，不添加 ComfyUI 的 `promptId`。
 连接失败或超时：由 n8n 记录节点错误，不自动重试。
 
 调用超时为 15 分钟。中文按标点切句、删除字幕末尾标点的行为由 WhisperX API 实现，n8n 不再次加工字幕。
