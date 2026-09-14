@@ -156,6 +156,9 @@ async def test_native_subtitle_writer(api, format, marker):
         ("diarizations", {"min_speakers": "3", "max_speakers": "1"}),
         ("diarizations", {}),
         ("subtitles", {"document_text": "原稿"}),
+        ("subtitles", {"document_text": "   "}),
+        ("subtitles", {"document_text": ""}),
+        ("subtitles", {"document": "原稿"}),
     ],
 )
 async def test_invalid_options(api, path, data):
@@ -350,3 +353,112 @@ async def test_invalid_audio_is_input_error(api, monkeypatch):
     response = await client.post("/v1/audio/transcriptions", files=audio())
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_audio"
+
+
+async def test_document_subtitles_align_original_text(api, monkeypatch):
+    client, pipeline, _, directory, _ = api
+    calls = []
+
+    def align(segments, *args, **kwargs):
+        calls.append(segments)
+        words = [{"word": "你好！", "start": 0.1, "end": 0.9}]
+        return {"segments": [{**segments[0], "words": words}], "word_segments": words}
+
+    monkeypatch.setattr(whisperx, "align", align)
+    response = await client.post(
+        "/v1/audio/subtitles",
+        files=audio(),
+        data={"document_text": "你好！", "language": "zh", "response_format": "srt"},
+    )
+    assert response.status_code == 200
+    assert "你好！" in response.text
+    assert calls[0][0]["text"] == "你好！"
+    assert len(pipeline.calls) == 1
+    assert not list(directory.glob("uploads/*"))
+
+
+async def test_unaligned_document_is_rejected(api, monkeypatch):
+    client, _, _, _, app = api
+    monkeypatch.setattr(whisperx, "align", lambda segments, *a, **kw: {"segments": segments})
+    response = await client.post(
+        "/v1/audio/subtitles",
+        files=audio(),
+        data={"document_text": "你好！"},
+    )
+    assert response.status_code == 422
+    assert app.state.available_engines.qsize() == 1
+
+
+async def test_document_json_preserves_original_text(api):
+    client, _, _, _, _ = api
+    response = await client.post(
+        "/v1/audio/subtitles",
+        files=audio(),
+        data={"document_text": "你好！", "response_format": "json"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"text": "你好！"}
+
+
+async def test_document_with_multiple_asr_segments_and_metadata(api, monkeypatch):
+    client, pipeline, _, _, _ = api
+    captured = []
+    monkeypatch.setattr(
+        pipeline,
+        "transcribe",
+        lambda audio, **kw: {
+            "language": "zh",
+            "segments": [
+                {"start": 0, "end": 0.5, "text": "你好", "avg_logprob": -0.1},
+                {"start": 0.5, "end": 1, "text": "今天市场上涨", "avg_logprob": -0.2},
+            ],
+        },
+    )
+
+    def align(segments, *args, **kwargs):
+        captured.extend(segments)
+        return {
+            "segments": [
+                {
+                    **item,
+                    "words": [{"word": item["text"], "start": item["start"], "end": item["end"]}],
+                }
+                for item in segments
+            ]
+        }
+
+    monkeypatch.setattr(whisperx, "align", align)
+    original = "你好！\n今天市场上涨。"
+    response = await client.post(
+        "/v1/audio/subtitles",
+        files=audio(),
+        data={"document_text": original, "response_format": "verbose_json"},
+    )
+    assert response.status_code == 200
+    assert response.json()["text"] == original
+    assert [item["text"] for item in captured] == ["你好！\n", "今天市场上涨。"]
+    assert [(item["start"], item["end"]) for item in captured] == [(0, 0.5), (0.5, 1)]
+
+
+@pytest.mark.parametrize(
+    "text,words",
+    [
+        ("你好！", [{"word": "你", "start": 0.1, "end": 0.2}]),
+        ("你", [{"word": "你", "start": 0.1, "end": 0.2}]),
+    ],
+)
+async def test_incomplete_document_alignment_is_rejected(api, monkeypatch, text, words):
+    client, _, _, _, _ = api
+    monkeypatch.setattr(
+        whisperx,
+        "align",
+        lambda segments, *a, **kw: {
+            "segments": [{"start": 0, "end": 1, "text": text, "words": words}],
+        },
+    )
+    response = await client.post(
+        "/v1/audio/subtitles",
+        files=audio(),
+        data={"document_text": "你好！"},
+    )
+    assert response.status_code == 422

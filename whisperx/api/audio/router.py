@@ -171,6 +171,9 @@ async def diarizations(
 async def subtitles(
     request: Request,
     file: AudioFile,
+    document_text: Annotated[
+        str | None, Form(description="Original narration script; used as subtitle text")
+    ] = None,
     model: Annotated[str | None, Form()] = None,
     language: Annotated[str | None, Form()] = None,
     prompt: Annotated[str | None, Form(max_length=4000)] = None,
@@ -184,8 +187,10 @@ async def subtitles(
     highlight_words: Annotated[bool, Form()] = False,
 ) -> Response:
     form = await request.form()
-    if "document" in form or "document_text" in form:
-        raise UnsupportedOption("Document-assisted subtitles are not supported in this version")
+    if "document" in form:
+        raise UnsupportedOption("Use document_text; document uploads are not supported")
+    if "document_text" in form and (document_text is None or not document_text.strip()):
+        raise UnsupportedOption("document_text must not be blank")
     if max_line_count is not None and max_line_width is None:
         raise UnsupportedOption("max_line_count requires max_line_width")
     options = parse_request(
@@ -202,7 +207,9 @@ async def subtitles(
         ),
     )
     result = await service.execute(
-        request, file, lambda engine, path: engine.transcribe(path, options)
+        request,
+        file,
+        lambda engine, path: engine.transcribe(path, options, document_text=document_text),
     )
     return await _render(
         result,

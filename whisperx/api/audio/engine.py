@@ -6,6 +6,7 @@ from typing import Any
 
 from whisperx.api.audio.schemas import (
     AlignmentRequest,
+    AlignmentSegment,
     AudioTask,
     DiarizationResult,
     DiarizationTurn,
@@ -112,10 +113,17 @@ class WhisperXEngine:
                 raise ModelUnavailable(f"Unable to load diarization model: {exc}") from exc
         return self._diarize_model
 
-    def transcribe(self, audio_path: Path, options: PipelineOptions) -> TranscriptionResult:
+    def transcribe(
+        self, audio_path: Path, options: PipelineOptions, *, document_text: str | None = None
+    ) -> TranscriptionResult:
         import whisperx
 
         model_name = options.model or self.settings.model_name
+        if document_text is not None:
+            if not document_text.strip():
+                raise UnsupportedOption("document_text must not be blank")
+            if not options.align or options.task != AudioTask.TRANSCRIBE:
+                raise UnsupportedOption("document_text requires aligned transcription")
         self._validate_model(model_name)
         if options.diarize:
             self._validate_diarization(options.return_speaker_embeddings)
@@ -144,6 +152,22 @@ class WhisperXEngine:
                 model.options = original_asr_options
                 model.tokenizer = original_tokenizer
             if options.align:
+                if document_text is not None:
+                    from whisperx.api.audio.document import match_document
+
+                    # ASR locates the narration; only original script text goes to align().
+                    result["segments"] = [
+                        segment.model_dump()
+                        for segment in match_document(
+                            document_text,
+                            [
+                                AlignmentSegment(
+                                    start=segment["start"], end=segment["end"], text=segment["text"]
+                                )
+                                for segment in result["segments"]
+                            ],
+                        )
+                    ]
                 (align_model, metadata) = self._get_align_model(result["language"])
                 result = whisperx.align(
                     result["segments"],
@@ -168,7 +192,13 @@ class WhisperXEngine:
                 result = whisperx.assign_word_speakers(
                     diarize_segments, result, speaker_embeddings=embeddings
                 )
-            return self._normalize_result(result, task=options.task, duration=duration)
+            normalized = self._normalize_result(result, task=options.task, duration=duration)
+            if document_text is not None:
+                from whisperx.api.audio.document import validate_document_alignment
+
+                validate_document_alignment(document_text, normalized)
+                normalized.text = document_text
+            return normalized
 
     def align(self, audio_path: Path, request: AlignmentRequest) -> TranscriptionResult:
         import whisperx

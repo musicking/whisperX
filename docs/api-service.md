@@ -107,8 +107,26 @@ Uses upstream `get_writer()` with aligned ASR text. Default format: SRT.
 Options: `model`, `language`, `prompt`, `hotwords`, `temperature`, `batch_size`,
 `chunk_size`, `response_format`, `max_line_width`, `max_line_count`, `highlight_words`.
 `max_line_count` requires `max_line_width`.
-This version does not implement document-assisted subtitle matching:
-`document` and `document_text` are explicitly rejected.
+Optional `document_text` supplies the original narration script. ASR segments locate
+the script in the audio; WhisperX aligns the original text, preserving its wording
+and punctuation. No new task queue or model is required. Without `document_text`,
+the existing ASR subtitle behavior is unchanged.
+Blank scripts, substantial narration changes and unreliable alignment return 422.
+Comparison ignores punctuation, whitespace, case and fullwidth character differences;
+spoken-number conversion and arbitrary reordered or omitted passages are not implemented.
+`document` file uploads are not supported.
+
+```bash
+curl http://localhost:7865/v1/audio/subtitles \
+  -F "file=@narration.mp3" \
+  --form-string "document_text=今天纳斯达克指数上涨。" \
+  -F "language=zh" \
+  -F "response_format=srt" \
+  -o subtitles.srt
+```
+
+Use `--form-string` for script text so curl does not interpret leading `@` or `<`
+as a file reference. `prompt` and `hotwords` remain ASR hints, not subtitle content.
 
 ### Language detection
 
