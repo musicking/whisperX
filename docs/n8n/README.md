@@ -1,28 +1,28 @@
 # n8n：音频生成 SRT 字幕
 
-导入文件：[whisperx-subtitles.json](whisperx-subtitles.json)。仅使用三个 n8n 内置节点，无需安装插件或配置凭据。
+导入文件：[whisperx-subtitles.json](whisperx-subtitles.json)。仅使用 n8n 内置节点，无需安装插件或配置凭据。
 
-流程：`Audio Webhook → Generate Subtitles → Return SRT`。
+流程：`Audio Webhook → Has Document → 自动字幕或原稿字幕 → Return SRT`。
+两个 HTTP Request 节点均采用原生逐项 Form-Data 字段，不对整组表单字段使用表达式。
 
 ## 导入和运行
 
 1. 在 n8n 新建工作流，菜单选择 **Import from File**，导入 JSON。
-2. 打开 **Generate Subtitles**，确认 API 地址为 `http://192.168.1.33:7865/v1/audio/subtitles`。地址必须能从 n8n 容器或服务器访问。
+2. 打开 **Generate Subtitles** 和 **Generate Document Subtitles**，确认 API 地址为 `http://192.168.1.33:7865/v1/audio/subtitles`。地址必须能从 n8n 容器或服务器访问。
 3. 打开 **Audio Webhook**，点击 **Listen for test event**，复制节点显示的 **Test URL**。
 4. 使用下方命令发送音频；响应即 SRT 文件。
-5. 保存并激活/发布工作流后，使用节点显示的 **Production URL**，无需手动监听。
+5. 替换旧工作流时先取消发布旧版本，再发布新版，避免相同 Webhook 路径冲突。生产地址为 `https://n8n.singlion.cn/webhook/whisperx/subtitles`。
 
 Webhook 的 **Binary Data** 和 **Raw Body** 保持关闭，使用默认 multipart 解析。一次提交一个文件，字段名为 `file`。
 
 ## 调用示例
 
-将下方 `http://你的n8n地址:5678/webhook-test/whisperx-subtitles` 替换为节点显示的 Test URL。
-生产调用通常使用 `/webhook/whisperx-subtitles`，以节点显示的 URL 为准。
+将下方示例 URL 替换为节点显示的 Test URL，或者使用已发布的生产地址。
 
 Windows PowerShell：
 
 ```powershell
-curl.exe "http://你的n8n地址:5678/webhook-test/whisperx-subtitles" `
+curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
   -F "file=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
   -F "language=zh" `
   -o subtitles.srt
@@ -31,7 +31,7 @@ curl.exe "http://你的n8n地址:5678/webhook-test/whisperx-subtitles" `
 根据原稿生成字幕（将 TXT 内容作为 `document_text` 文本字段发送，不上传 document 文件）：
 
 ```powershell
-curl.exe "http://你的n8n地址:5678/webhook-test/whisperx-subtitles" `
+curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
   -F "file=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
   -F "document_text=<D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.txt" `
   -F "language=zh" `
@@ -41,7 +41,7 @@ curl.exe "http://你的n8n地址:5678/webhook-test/whisperx-subtitles" `
 Linux：
 
 ```bash
-curl 'http://你的n8n地址:5678/webhook-test/whisperx-subtitles' \
+curl 'https://n8n.singlion.cn/webhook-test/whisperx/subtitles' \
   -F 'file=@/path/to/narration.mp3' \
   -F 'document_text=</path/to/document.txt' \
   -F 'language=zh' \
@@ -67,8 +67,9 @@ API 错误：原样返回 API 状态码及 JSON 错误；不要将错误响应�
 
 ## 验证范围
 
-已核对 JSON、节点连接和 n8n 官方参数定义，并验证有原稿/无原稿时的请求参数表达式。
-未连接你的 n8n 实例，尚未执行真实的工作流导入和端到端运行。
+旧版使用整组数组表达式，实测导致 file 未传入 API；截图同时显示表单字段区未正常显示。
+新版改为原生字段数组，并通过 IF 选择原稿分支；已验证配置结构、分支连接和单字段表达式。
+新版仍需重新导入发布后执行端到端验证；仅在 Node.js 中执行表达式不能替代 n8n 的配置结构验证。
 
 参考：[Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)、
 [HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/)、

@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "whisperx-subtitles",
+        "path": "whisperx/subtitles",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -12,9 +12,47 @@
       "name": "Audio Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "176ea334-c198-47ae-a950-ad85011c4cc6",
       "notes": "接收 multipart/form-data。音频文件字段必须为 file；可选 language（默认 zh）、document_text（原稿文字）。不要开启 Binary Data，它会把整个 multipart 请求当作文件。"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "635b4eab-72d6-4d38-85aa-4a249ea45076",
+              "leftValue": "={{ ($json.body.document_text || '').trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f408f3cf-485d-4efc-ad70-46635cb7e250",
+      "name": "Has Document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        0
+      ],
+      "notes": "原稿非空走 true；未提供或空白走 false。保留音频 Binary.file。"
     },
     {
       "parameters": {
@@ -23,7 +61,95 @@
         "sendBody": true,
         "contentType": "multipart-form-data",
         "bodyParameters": {
-          "parameters": "={{ [\n  { parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'file' },\n  { parameterType: 'formData', name: 'language', value: $json.body.language || 'zh' },\n  { parameterType: 'formData', name: 'response_format', value: 'srt' },\n  { parameterType: 'formData', name: 'max_line_width', value: '30' },\n  { parameterType: 'formData', name: 'max_line_count', value: '1' },\n  ...($json.body.document_text?.trim()\n    ? [{ parameterType: 'formData', name: 'document_text', value: $json.body.document_text }]\n    : [])\n] }}"
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            },
+            {
+              "parameterType": "formData",
+              "name": "language",
+              "value": "={{ $json.body.language || 'zh' }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "response_format",
+              "value": "srt"
+            },
+            {
+              "parameterType": "formData",
+              "name": "max_line_width",
+              "value": "30"
+            },
+            {
+              "parameterType": "formData",
+              "name": "max_line_count",
+              "value": "1"
+            },
+            {
+              "parameterType": "formData",
+              "name": "document_text",
+              "value": "={{ $json.body.document_text }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 900000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "file",
+              "outputPropertyName": "subtitles"
+            }
+          }
+        }
+      },
+      "id": "50e9f29d-c931-4385-8fcf-d4a63e86b9e1",
+      "name": "Generate Document Subtitles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        -150
+      ],
+      "notes": "有原稿：在原生表单字段中增加 document_text。音频仍从 Binary.file 读取。"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.33:7865/v1/audio/subtitles",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            },
+            {
+              "parameterType": "formData",
+              "name": "language",
+              "value": "={{ $json.body.language || 'zh' }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "response_format",
+              "value": "srt"
+            },
+            {
+              "parameterType": "formData",
+              "name": "max_line_width",
+              "value": "30"
+            },
+            {
+              "parameterType": "formData",
+              "name": "max_line_count",
+              "value": "1"
+            }
+          ]
         },
         "options": {
           "timeout": 900000,
@@ -41,8 +167,11 @@
       "name": "Generate Subtitles",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [300, 0],
-      "notes": "直接调用内部 WhisperX API，不使用认证。原稿为空时不发送 document_text，以避免空原稿触发 422。保留 API 状态码和完整响应，成功时为 SRT，API 错误时为 JSON。"
+      "position": [
+        600,
+        150
+      ],
+      "notes": "无原稿：使用原生表单字段发送 file 音频及字幕选项。保留完整响应和 API 状态码。"
     },
     {
       "parameters": {
@@ -50,7 +179,7 @@
         "responseDataSource": "set",
         "inputFieldName": "subtitles",
         "options": {
-          "responseCode": "={{ $json.statusCode }}",
+          "responseCode": "={{ Number($json.statusCode) }}",
           "responseHeaders": {
             "entries": [
               {
@@ -69,19 +198,70 @@
       "name": "Return SRT",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [600, 0],
+      "position": [
+        900,
+        0
+      ],
       "notes": "成功时返回可下载的 subtitles.srt；API 返回 422/503 等状态时原样转发状态和 JSON 错误内容。"
     }
   ],
   "connections": {
     "Audio Webhook": {
-      "main": [[{"node": "Generate Subtitles", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Has Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Document": {
+      "main": [
+        [
+          {
+            "node": "Generate Document Subtitles",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Subtitles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Document Subtitles": {
+      "main": [
+        [
+          {
+            "node": "Return SRT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Subtitles": {
-      "main": [[{"node": "Return SRT", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Return SRT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": {"executionOrder": "v1", "executionTimeout": 900},
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 900
+  },
   "active": false,
   "pinData": {},
   "tags": []
