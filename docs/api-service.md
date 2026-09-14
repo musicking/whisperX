@@ -42,7 +42,7 @@ no API key or authentication header is required.
 | POST | /v1/audio/subtitles | Transcribe, align and render subtitles |
 | POST | /v1/audio/language | Detect language |
 | GET | /health/live | Liveness probe (public) |
-| GET | /health/ready | App initialization probe (public) |
+| GET | /health | App initialization probe (public) |
 | GET | /v1/models | List allowed models |
 | GET | /v1/capabilities | Discover configured capabilities |
 

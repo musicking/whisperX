@@ -12,7 +12,7 @@ async def live():
     return {"status": "ok"}
 
 
-@router.get("/health/ready", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse)
 async def ready(settings: SettingsDependency):
     # Lifespan has initialized the engine. Models load lazily unless preload_model is enabled.
     return {"status": "ready"}

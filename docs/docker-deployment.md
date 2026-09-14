@@ -80,7 +80,7 @@ docker compose logs -f api
 ```
 
 ```bash
-curl http://localhost:7865/health/live
+curl http://localhost:7865/health
 curl http://localhost:7865/v1/audio/subtitles \
   -F "file=@/path/to/narration.mp3" \
   -F "language=zh" \
