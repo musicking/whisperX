@@ -37,4 +37,5 @@ async def capabilities(settings: SettingsDependency):
         "models": list(settings.allowed_models),
         "diarization": bool(settings.hf_token),
         "speaker_embeddings": bool(settings.hf_token) and settings.allow_speaker_embeddings,
+        "document_subtitles": True,
     }

@@ -16,9 +16,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
     TORCH_HOME=/data/models/torch \
     NLTK_DATA=/data/models/nltk-data:/opt/nltk_data
 
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md LICENSE MANIFEST.in ./
 COPY whisperx ./whisperx
+# Isolated Python checks the installed wheel, not the source under /app.
 RUN uv sync --frozen --extra api --python /usr/bin/python3 --no-editable \
+    && python -I -c "from importlib.resources import files; assets = files('whisperx').joinpath('assets'); assert all(assets.joinpath(name).is_file() for name in ('pytorch_model.bin', 'mel_filters.npz')), 'WhisperX package assets are missing'" \
     && python -m nltk.downloader -d /opt/nltk_data punkt_tab \
     && uv cache clean
 

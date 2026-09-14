@@ -175,6 +175,7 @@ async def test_discovery(api):
     assert (await client.get("/health")).json()["status"] == "ready"
     assert (await client.get("/v1/models")).json()["data"][2]["default"] is True
     assert (await client.get("/v1/capabilities")).json()["diarization"] is False
+    assert (await client.get("/v1/capabilities")).json()["document_subtitles"] is True
     assert "/health" in app.openapi()["paths"]
     assert "/health/ready" not in app.openapi()["paths"]
     assert "/v1/audio/language" in app.openapi()["paths"]
