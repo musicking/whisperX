@@ -2,6 +2,7 @@
 
 采用单个 API 容器，直接调用 WhisperX，不需要 Worker、数据库或消息队列。
 默认端口为 7865。Dockerfile 内包含 CUDA 12.8、cuDNN、FFmpeg 和 Python 环境。
+镜像标签为 `whisperx-api:latest`，容器名固定为 `whisperx-api`。
 宿主机需要 NVIDIA 驱动、Docker Engine、Docker Compose v2 和 NVIDIA Container Toolkit。
 
 ## 1. 检查 GPU 容器环境
