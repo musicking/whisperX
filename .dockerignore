@@ -3,6 +3,10 @@
 .env
 .env.*
 data
+models
+**/.cache
+**/models--*
+**/*.safetensors
 whisperx_api
 **/__pycache__
 **/*.pyc

@@ -1,10 +1,13 @@
 # Docker Compose 部署（Linux / NVIDIA GPU）
 
 采用单个 API 容器，直接调用 WhisperX，不需要 Worker、数据库或消息队列。
-默认端口为 7865。Dockerfile 内包含 CUDA 12.8、cuDNN、FFmpeg 和 Python 环境。
+默认端口为 7865。使用 Ubuntu 24.04 和 Python 3.12，CUDA 12.8、cuDNN 由锁定的 PyTorch 2.8.0 cu128 依赖提供，另安装 FFmpeg。
+版本遵循 [WhisperX 上游](https://github.com/m-bain/whisperX) 的依赖声明，PyTorch 构建组合见 [官方安装说明](https://pytorch.org/get-started/previous-versions/#v280)。
 镜像标签为 `whisperx-api:latest`，容器名固定为 `whisperx-api`。
 镜像优先使用 PyTorch 依赖中安装的 cuDNN/cuBLAS，避免 CTranslate2 混用不同版本的系统库。
 Python 共享库也随镜像安装，供 TorchCodec 使用。
+采用多阶段构建：最终镜像只包含运行依赖，构建工具、下载缓存和源码副本不进入镜像。
+转写、对齐和说话人模型不打包，使用宿主机 `data/models` 挂载；仅保留 WhisperX 自带的约 17 MiB VAD 资源，这是原生 pyannote VAD 运行所需。
 宿主机需要 NVIDIA 驱动、Docker Engine、Docker Compose v2 和 NVIDIA Container Toolkit。
 
 ## 1. 检查 GPU 容器环境
@@ -81,6 +84,12 @@ docker compose up -d --build
 docker compose ps
 docker compose logs -f api
 ```
+
+构建时使用 BuildKit 下载缓存，限制同时下载大包的数量，并增加下载超时和重试次数。
+若遇到 TLS 连接中断，重新运行 `docker compose up -d --build`，已完成的下载可以复用。
+不要添加 `--no-cache` 或清理构建缓存；第一次仍需下载数 GB 的 PyTorch/CUDA 依赖。
+CUDA 库和 PyTorch 本身占用较大，因此 GPU 镜像仍会达到数 GB，不能按普通 FastAPI 镜像的体积估算。
+可通过 `docker history whisperx-api:latest` 查看各层的实际大小。
 
 ```bash
 curl http://localhost:7865/health
