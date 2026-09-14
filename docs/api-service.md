@@ -18,7 +18,7 @@ uv run --extra api whisperx-api
 
 Alternatively: `uv run --extra api python -m whisperx.api`.
 For CPU execution set `WHISPERX_API_DEVICE=cpu` and `WHISPERX_API_COMPUTE_TYPE=int8`.
-Default port: 9898. Swagger: http://localhost:9898/docs.
+Default port: 7865. Swagger: http://localhost:7865/docs.
 Docs are disabled by default when `WHISPERX_API_ENVIRONMENT=production`.
 
 All settings have defaults. The commented `.env.example` lists common settings;
@@ -50,7 +50,7 @@ but use local WhisperX model names. This is not a claim of complete OpenAI compa
 ### Transcription
 
 ```powershell
-curl.exe http://localhost:9898/v1/audio/transcriptions `
+curl.exe http://localhost:7865/v1/audio/transcriptions `
   -F "file=@audio.mp3" `
   -F "language=zh" `
   -F "response_format=verbose_json" `
@@ -92,7 +92,7 @@ Embeddings also require `WHISPERX_API_ALLOW_SPEAKER_EMBEDDINGS=true`.
 ### Subtitles
 
 ```powershell
-curl.exe http://localhost:9898/v1/audio/subtitles `
+curl.exe http://localhost:7865/v1/audio/subtitles `
   -F "file=@narration.mp3" `
   -F "language=zh" `
   -F "max_line_width=30" `

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="WHISPERX_API_", extra="ignore")
 
     host: str = "0.0.0.0"
-    port: int = Field(default=9898, ge=1, le=65535)
+    port: int = Field(default=7865, ge=1, le=65535)
     log_level: Literal["debug", "info", "warning", "error", "critical"] = "info"
     log_file: Path = Path("./data/logs/api.log")
     log_max_bytes: int = Field(default=10_485_760, ge=1)
