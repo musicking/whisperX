@@ -25,13 +25,13 @@ def test_subtitles_split_at_punctuation_not_character_limit():
     blocks = content.decode().strip().split("\n\n")
     lines = ["".join(block.splitlines()[2:]) for block in blocks]
     assert lines == [
-        "大家好，",
-        "我是懂险帝。",
-        "两亿港元加上五千万港元，",
-        "真正难的不是怎么投，",
-        "而是别把架构、税务和保单功能混成一件事。",
+        "大家好",
+        "我是懂险帝",
+        "两亿港元加上五千万港元",
+        "真正难的不是怎么投",
+        "而是别把架构、税务和保单功能混成一件事",
     ]
-    assert "".join(lines) == text
+    assert "架构、税务" in lines[-1]
     assert result.segments[0].text == text
 
 
@@ -41,7 +41,7 @@ def test_subtitles_preserve_decimal_and_closing_quotes():
         result_for(text), ResponseFormat.VTT, max_line_width=8, max_line_count=1
     )
     lines = [block.splitlines()[-1] for block in content.decode().strip().split("\n\n")[1:]]
-    assert lines == ["收益是3.14%，", "他说“可以。”", "下一句。"]
+    assert lines == ["收益是3.14%", "他说“可以”", "下一句"]
 
 
 def test_translation_joins_english_output_with_spaces():

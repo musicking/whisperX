@@ -1,5 +1,6 @@
 import io
 import json
+import re
 
 from whisperx.api.audio.schemas import AudioTask, ResponseFormat, TranscriptionResult
 from whisperx.api.audio.subtitles import split_subtitles
@@ -51,4 +52,13 @@ def render_result(
         "vtt": "text/vtt",
         "tsv": "text/tab-separated-values",
     }
-    return output.getvalue().encode(), media_types[extension]
+    text = output.getvalue()
+    if response_format in {ResponseFormat.SRT, ResponseFormat.VTT}:
+        # Remove cue-ending punctuation after layout; retain closing quotes,
+        # highlight tags and all timestamps, including punctuation word timings.
+        text = re.sub(
+            r"[，。！？；：、,.!?;:…—]+(?=(?:[’”\"'）)\]】》]|</u>)*\s*(?:\n\n|$))",
+            "",
+            text,
+        )
+    return text.encode(), media_types[extension]

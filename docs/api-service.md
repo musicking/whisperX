@@ -110,7 +110,9 @@ Options: `model`, `language`, `prompt`, `hotwords`, `temperature`, `batch_size`,
 
 SRT/VTT subtitles with word timestamps are split at clause punctuation first,
 following the approach used by [VoiceBridge](https://github.com/YanTianlong-01/comfyui_voicebridge/blob/main/src/comfyui_voicebridge/nodes.py).
-Punctuation, closing quotes, decimal numbers and timestamps are retained.
+Cue-ending punctuation is removed from SRT/VTT display text; internal punctuation,
+closing quotes, decimal numbers and timestamps are retained. JSON/TEXT/TSV retain
+the original punctuation.
 Chinese `max_line_width` is a soft limit: a clause without a safe punctuation
 boundary may exceed it rather than split a word. Each clause is kept in its own
 cue; English clauses may wrap at word boundaries. JSON and TSV keep the original
