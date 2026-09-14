@@ -91,6 +91,9 @@ docker compose logs -f api
 CUDA 库和 PyTorch 本身占用较大，因此 GPU 镜像仍会达到数 GB，不能按普通 FastAPI 镜像的体积估算。
 可通过 `docker history whisperx-api:latest` 查看各层的实际大小。
 
+应用包通过 `uv pip install --no-deps .` 从当前源码重新打包，保留大依赖缓存。
+构建时会逐文件比较已安装包与源码的 Python 文件，防止仅修改源码后误用旧 wheel。
+
 ```bash
 curl http://localhost:7865/health
 curl http://localhost:7865/v1/audio/subtitles \

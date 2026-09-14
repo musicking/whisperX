@@ -38,8 +38,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY README.md LICENSE MANIFEST.in ./
 COPY whisperx ./whisperx
+# Explicit local installs always rebuild the wheel. uv sync may otherwise reuse
+# a wheel when Python sources change but pyproject.toml stays unchanged.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --extra api --no-dev --python /usr/bin/python3 --no-editable
+    uv pip install --python /app/.venv/bin/python --no-deps . \
+    && python -I -c "from pathlib import Path; from importlib.resources import files; source = Path('whisperx'); package = files('whisperx'); assert all(package.joinpath(*path.relative_to(source).parts).read_bytes() == path.read_bytes() for path in source.rglob('*.py')), 'Installed WhisperX differs from source'"
 
 FROM runtime-base AS runtime
 # Only installed packages and NLTK data enter the final image, not build caches
