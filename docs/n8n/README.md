@@ -13,7 +13,7 @@
 4. 使用下方命令发送音频；响应为 JSON，`srtContent` 为完整字幕文本。
 5. 替换旧工作流时先取消发布旧版本，再发布新版，避免相同 Webhook 路径冲突。生产地址为 `https://n8n.singlion.cn/webhook/whisperx/subtitles`。
 
-Webhook 的 **Binary Data** 和 **Raw Body** 保持关闭，使用默认 multipart 解析。一次提交一个文件，字段名为 `file`。
+Webhook 的 **Binary Data** 和 **Raw Body** 保持关闭，使用默认 multipart 解析。一次提交一个文件，对外字段名为 `data`；HTTP Request 节点将 n8n 的 `data` 二进制映射为 API 的 `file` 字段。
 
 ## 调用示例
 
@@ -23,8 +23,7 @@ Windows PowerShell：
 
 ```powershell
 curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
-  -F "file=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
-  -F "language=zh" `
+  -F "data=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
   -o result.json
 ```
 
@@ -32,9 +31,8 @@ curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
 
 ```powershell
 curl.exe "https://n8n.singlion.cn/webhook-test/whisperx/subtitles" `
-  -F "file=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
+  -F "data=@D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.mp3" `
   -F "document_text=<D:\King\SingLionVideo\Source\如果有两亿 通常会装配什么资产.txt" `
-  -F "language=zh" `
   -o result.json
 ```
 
@@ -42,9 +40,8 @@ Linux：
 
 ```bash
 curl 'https://n8n.singlion.cn/webhook-test/whisperx/subtitles' \
-  -F 'file=@/path/to/narration.mp3' \
+  -F 'data=@/path/to/narration.mp3' \
   -F 'document_text=</path/to/document.txt' \
-  -F 'language=zh' \
   -o result.json
 ```
 
@@ -54,8 +51,7 @@ curl 'https://n8n.singlion.cn/webhook-test/whisperx/subtitles' \
 
 | 输入字段 | 用途 |
 | --- | --- |
-| `file` | 必填，音频文件 |
-| `language` | 可选，默认 `zh` |
+| `data` | 必填，音频文件 |
 | `document_text` | 可选，原稿文字；未填写或空白时不传给 API |
 
 成功：HTTP 200，普通 JSON 响应，与附件 ComfyUI 工作流的字段保持一致：
@@ -69,7 +65,7 @@ API 错误：保留 API 状态码，返回 `{"success":false,"error":"API 错误
 WhisperX 没有任务 ID，不添加 ComfyUI 的 `promptId`。
 连接失败或超时：由 n8n 记录节点错误，不自动重试。
 
-调用超时为 15 分钟。无原稿时使用 Whisper 原生时间戳分段；有原稿时按对齐后的标点切句。字幕末尾标点由 WhisperX API 删除，n8n 不再次加工字幕。
+调用超时为 15 分钟。工作流不再固定语言，由 Whisper 自动检测；无原稿时使用 Whisper 原生时间戳分段，有原稿时按对齐后的标点切句。`max_line_width` 和 `max_line_count` 已移除。字幕末尾标点由 WhisperX API 删除，n8n 不再次加工字幕。
 如果 n8n 前面有反向代理，其等待超时也需覆盖音频推理耗时。
 
 ## 验证范围

@@ -17,7 +17,7 @@
         0
       ],
       "webhookId": "176ea334-c198-47ae-a950-ad85011c4cc6",
-      "notes": "接收 multipart/form-data。音频文件字段必须为 file；可选 language（默认 zh）、document_text（原稿文字）。不要开启 Binary Data，它会把整个 multipart 请求当作文件。"
+      "notes": "接收 multipart/form-data。外部音频字段为 data；可选 document_text。语言由 Whisper 自动检测。Webhook 不要启用 Binary Data。"
     },
     {
       "parameters": {
@@ -52,7 +52,7 @@
         300,
         0
       ],
-      "notes": "原稿非空走 true；未提供或空白走 false。保留音频 Binary.file。"
+      "notes": "仅用于决定是否向 API 发送 document_text；两条路径都保留音频 Binary.data。"
     },
     {
       "parameters": {
@@ -65,27 +65,12 @@
             {
               "parameterType": "formBinaryData",
               "name": "file",
-              "inputDataFieldName": "file"
-            },
-            {
-              "parameterType": "formData",
-              "name": "language",
-              "value": "={{ $json.body.language || 'zh' }}"
+              "inputDataFieldName": "data"
             },
             {
               "parameterType": "formData",
               "name": "response_format",
               "value": "srt"
-            },
-            {
-              "parameterType": "formData",
-              "name": "max_line_width",
-              "value": "30"
-            },
-            {
-              "parameterType": "formData",
-              "name": "max_line_count",
-              "value": "1"
             },
             {
               "parameterType": "formData",
@@ -127,27 +112,12 @@
             {
               "parameterType": "formBinaryData",
               "name": "file",
-              "inputDataFieldName": "file"
-            },
-            {
-              "parameterType": "formData",
-              "name": "language",
-              "value": "={{ $json.body.language || 'zh' }}"
+              "inputDataFieldName": "data"
             },
             {
               "parameterType": "formData",
               "name": "response_format",
               "value": "srt"
-            },
-            {
-              "parameterType": "formData",
-              "name": "max_line_width",
-              "value": "30"
-            },
-            {
-              "parameterType": "formData",
-              "name": "max_line_count",
-              "value": "1"
             }
           ]
         },
