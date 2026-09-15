@@ -175,7 +175,7 @@ async def test_native_subtitle_writer(api, format, marker):
     assert "原生分段" in response.text
     assert pipeline.calls == []
     assert pipeline.model.calls[0]["initial_prompt"] == "你好，欢迎收听。"
-    assert pipeline.model.calls[0]["condition_on_previous_text"] is True
+    assert pipeline.model.calls[0]["condition_on_previous_text"] is False
     assert pipeline.model.calls[0]["without_timestamps"] is False
     assert pipeline.model.calls[0]["vad_filter"] is False
 

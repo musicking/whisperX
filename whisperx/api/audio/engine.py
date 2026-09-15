@@ -227,7 +227,9 @@ class WhisperXEngine:
                 compression_ratio_threshold=pipeline.options.compression_ratio_threshold,
                 log_prob_threshold=pipeline.options.log_prob_threshold,
                 no_speech_threshold=pipeline.options.no_speech_threshold,
-                condition_on_previous_text=True,
+                # Decode windows independently so one bad segment cannot start a
+                # repetition loop across the remainder of a long audio file.
+                condition_on_previous_text=False,
                 initial_prompt=options.initial_prompt,
                 suppress_blank=pipeline.options.suppress_blank,
                 suppress_tokens=pipeline.options.suppress_tokens,

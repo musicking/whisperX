@@ -109,9 +109,10 @@ Options: `model`, `language`, `prompt`, `hotwords`, `temperature`, `batch_size`,
 `max_line_count` requires `max_line_width`.
 
 Without `document_text`, the endpoint uses Whisper's native timestamp segments with
-automatic language detection, previous-text context, and no VAD filter. It does not
-run forced alignment or depend on punctuation to create cues. `batch_size` only
-applies to the document alignment path.
+automatic language detection and no VAD filter. Decoding windows do not reuse the
+previous window's text, preventing one bad segment from causing a repetition loop
+through the remainder of a long audio file. It does not run forced alignment or depend
+on punctuation to create cues. `batch_size` only applies to the document alignment path.
 
 With `document_text`, ASR locates the script in the audio and WhisperX aligns the
 original text, preserving its wording and punctuation. Aligned SRT/VTT subtitles are
