@@ -39,7 +39,7 @@ no API key or authentication header is required.
 | POST | /v1/audio/translations | Translate speech into English |
 | POST | /v1/audio/alignments | Align existing timed transcript segments |
 | POST | /v1/audio/diarizations | Detect anonymous speaker turns |
-| POST | /v1/audio/subtitles | Transcribe, align and render subtitles |
+| POST | /v1/audio/subtitles | Generate native or document-aligned subtitles |
 | POST | /v1/audio/language | Detect language |
 | GET | /health/live | Liveness probe (public) |
 | GET | /health | App initialization probe (public) |
@@ -103,24 +103,27 @@ curl.exe http://localhost:7865/v1/audio/subtitles `
   -o subtitles.srt
 ```
 
-Uses upstream `get_writer()` with aligned ASR text. Default format: SRT.
+Uses upstream `get_writer()`. Default format: SRT.
 Options: `model`, `language`, `prompt`, `hotwords`, `temperature`, `batch_size`,
 `chunk_size`, `response_format`, `max_line_width`, `max_line_count`, `highlight_words`.
 `max_line_count` requires `max_line_width`.
 
-SRT/VTT subtitles with word timestamps are split at clause punctuation first,
-following the approach used by [VoiceBridge](https://github.com/YanTianlong-01/comfyui_voicebridge/blob/main/src/comfyui_voicebridge/nodes.py).
+Without `document_text`, the endpoint uses Whisper's native timestamp segments with
+automatic language detection, previous-text context, and no VAD filter. It does not
+run forced alignment or depend on punctuation to create cues. `batch_size` only
+applies to the document alignment path.
+
+With `document_text`, ASR locates the script in the audio and WhisperX aligns the
+original text, preserving its wording and punctuation. Aligned SRT/VTT subtitles are
+split at clause punctuation first, following the approach used by
+[VoiceBridge](https://github.com/YanTianlong-01/comfyui_voicebridge/blob/main/src/comfyui_voicebridge/nodes.py).
 Cue-ending punctuation is removed from SRT/VTT display text; internal punctuation,
 closing quotes, decimal numbers and timestamps are retained. JSON/TEXT/TSV retain
 the original punctuation.
 Chinese `max_line_width` is a soft limit: a clause without a safe punctuation
 boundary may exceed it rather than split a word. Each clause is kept in its own
 cue; English clauses may wrap at word boundaries. JSON and TSV keep the original
-transcription segments. With `align=false`, subtitles retain segment boundaries.
-Optional `document_text` supplies the original narration script. ASR segments locate
-the script in the audio; WhisperX aligns the original text, preserving its wording
-and punctuation. No new task queue or model is required. Without `document_text`,
-the existing ASR subtitle behavior is unchanged.
+transcription segments. Optional `document_text` supplies the original narration script.
 Blank scripts, substantial narration changes and unreliable alignment return 422.
 Comparison ignores punctuation, whitespace, case and fullwidth character differences;
 spoken-number conversion and arbitrary reordered or omitted passages are not implemented.

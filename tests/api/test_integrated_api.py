@@ -2,6 +2,7 @@ import asyncio
 import threading
 import time
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 import httpx
 import numpy as np
@@ -17,6 +18,33 @@ class Options:
     temperatures: object = None
     initial_prompt: str | None = None
     hotwords: str | None = None
+    beam_size: int = 5
+    best_of: int = 5
+    patience: float = 1
+    length_penalty: float = 1
+    repetition_penalty: float = 1
+    no_repeat_ngram_size: int = 0
+    compression_ratio_threshold: float = 2.4
+    log_prob_threshold: float = -1
+    no_speech_threshold: float = 0.6
+    suppress_blank: bool = True
+    suppress_tokens: object = None
+
+
+class NativeModel:
+    def __init__(self):
+        self.calls = []
+
+    def transcribe(self, audio, **kwargs):
+        self.calls.append(kwargs)
+        segment = SimpleNamespace(
+            start=0.2,
+            end=0.8,
+            text="原生分段。",
+            avg_logprob=-0.1,
+            words=None,
+        )
+        return iter([segment]), SimpleNamespace(language=kwargs.get("language") or "zh")
 
 
 class Pipeline:
@@ -27,6 +55,7 @@ class Pipeline:
         self.calls = []
         self.active = 0
         self.maximum_active = 0
+        self.model = NativeModel()
 
     def transcribe(self, audio, **kwargs):
         self.active += 1
@@ -128,21 +157,38 @@ async def test_alignment_request(api):
     assert response.json()["task"] == "align"
 
 
-@pytest.mark.parametrize("format,marker", [("srt", "00:00:00,100"), ("vtt", "WEBVTT")])
+@pytest.mark.parametrize("format,marker", [("srt", "00:00:00,200"), ("vtt", "WEBVTT")])
 async def test_native_subtitle_writer(api, format, marker):
-    client, _, _, _, _ = api
+    client, pipeline, _, _, _ = api
     response = await client.post(
         "/v1/audio/subtitles",
         files=audio(),
         data={
             "response_format": format,
+            "prompt": "你好，欢迎收听。",
             "max_line_width": "20",
             "max_line_count": "1",
         },
     )
     assert response.status_code == 200
     assert marker in response.text
-    assert "你好" in response.text
+    assert "原生分段" in response.text
+    assert pipeline.calls == []
+    assert pipeline.model.calls[0]["initial_prompt"] == "你好，欢迎收听。"
+    assert pipeline.model.calls[0]["condition_on_previous_text"] is True
+    assert pipeline.model.calls[0]["without_timestamps"] is False
+    assert pipeline.model.calls[0]["vad_filter"] is False
+
+
+async def test_native_subtitle_word_highlighting_requests_timestamps(api):
+    client, pipeline, _, _, _ = api
+    response = await client.post(
+        "/v1/audio/subtitles",
+        files=audio(),
+        data={"response_format": "srt", "highlight_words": "true"},
+    )
+    assert response.status_code == 200
+    assert pipeline.model.calls[0]["word_timestamps"] is True
 
 
 @pytest.mark.parametrize(
@@ -372,7 +418,8 @@ async def test_document_subtitles_align_original_text(api, monkeypatch):
         data={"document_text": "你好！", "language": "zh", "response_format": "srt"},
     )
     assert response.status_code == 200
-    assert "你好！" in response.text
+    assert "你好" in response.text
+    assert "你好！" not in response.text
     assert calls[0][0]["text"] == "你好！"
     assert len(pipeline.calls) == 1
     assert not list(directory.glob("uploads/*"))

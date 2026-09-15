@@ -200,6 +200,68 @@ class WhisperXEngine:
                 normalized.text = document_text
             return normalized
 
+    def transcribe_native(
+        self,
+        audio_path: Path,
+        options: PipelineOptions,
+        *,
+        word_timestamps: bool = False,
+    ) -> TranscriptionResult:
+        """Transcribe with Whisper's timestamp segments instead of WhisperX VAD chunks."""
+        model_name = options.model or self.settings.model_name
+        self._validate_model(model_name)
+        with self._lock:
+            audio = _load_audio(audio_path)
+            pipeline = self._get_asr_model(model_name)
+            segments, info = pipeline.model.transcribe(
+                audio,
+                language=options.language,
+                task=options.task.value,
+                beam_size=pipeline.options.beam_size,
+                best_of=pipeline.options.best_of,
+                patience=pipeline.options.patience,
+                length_penalty=pipeline.options.length_penalty,
+                repetition_penalty=pipeline.options.repetition_penalty,
+                no_repeat_ngram_size=pipeline.options.no_repeat_ngram_size,
+                temperature=options.temperature,
+                compression_ratio_threshold=pipeline.options.compression_ratio_threshold,
+                log_prob_threshold=pipeline.options.log_prob_threshold,
+                no_speech_threshold=pipeline.options.no_speech_threshold,
+                condition_on_previous_text=True,
+                initial_prompt=options.initial_prompt,
+                suppress_blank=pipeline.options.suppress_blank,
+                suppress_tokens=pipeline.options.suppress_tokens,
+                without_timestamps=False,
+                word_timestamps=word_timestamps,
+                vad_filter=False,
+                chunk_length=options.chunk_size,
+                hotwords=options.hotwords,
+            )
+            raw_segments = []
+            for segment in segments:
+                raw_segment = {
+                    "start": segment.start,
+                    "end": segment.end,
+                    "text": segment.text,
+                    "avg_logprob": segment.avg_logprob,
+                }
+                if segment.words is not None:
+                    raw_segment["words"] = [
+                        {
+                            "word": word.word,
+                            "start": word.start,
+                            "end": word.end,
+                            "score": word.probability,
+                        }
+                        for word in segment.words
+                    ]
+                raw_segments.append(raw_segment)
+            return self._normalize_result(
+                {"language": info.language, "segments": raw_segments},
+                task=options.task,
+                duration=len(audio) / 16000,
+            )
+
     def align(self, audio_path: Path, request: AlignmentRequest) -> TranscriptionResult:
         import whisperx
 

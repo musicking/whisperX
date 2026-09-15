@@ -167,7 +167,7 @@ async def diarizations(
     )
 
 
-@router.post("/subtitles", summary="Generate word-aligned subtitles")
+@router.post("/subtitles", summary="Generate subtitles")
 async def subtitles(
     request: Request,
     file: AudioFile,
@@ -201,15 +201,21 @@ async def subtitles(
             initial_prompt=prompt,
             hotwords=hotwords,
             temperature=temperature,
-            align=True,
+            align=document_text is not None,
             batch_size=batch_size,
             chunk_size=chunk_size,
         ),
     )
+
+    def generate(engine, path):
+        if document_text is None:
+            return engine.transcribe_native(path, options, word_timestamps=highlight_words)
+        return engine.transcribe(path, options, document_text=document_text)
+
     result = await service.execute(
         request,
         file,
-        lambda engine, path: engine.transcribe(path, options, document_text=document_text),
+        generate,
     )
     return await _render(
         result,
